@@ -24,17 +24,39 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-      // Redirect to user dashboard
-      router.push("/dashboard/user")
-    }, 1500)
+  try {
+    const res = await fetch("http://localhost:5000/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
+    }
+
+    // Save user session info
+    localStorage.setItem("userId", data.user_id);
+    localStorage.setItem("organizationId", data.organization_id);
+    localStorage.setItem("isAdmin", data.is_admin);
+
+    // Redirect based on role
+    router.push(data.is_admin ? "/dashboard/admin" : "/dashboard/user");
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
   }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

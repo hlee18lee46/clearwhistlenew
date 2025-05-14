@@ -19,26 +19,13 @@ type UserReport = {
 export default function UserDashboard() {
   const [reports, setReports] = useState<UserReport[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState({ name: "John Doe", email: "john.doe@example.com" })
+  const [user, setUser] = useState({ name: "", email: "john.doe@example.com" })
 
   useEffect(() => {
     // Simulate loading user reports
     setTimeout(() => {
       setReports([
-        {
-          id: "1",
-          reportTitle: "Unethical Marketing Practices",
-          reportType: "ethics",
-          timestamp: "2023-05-15T10:30:00Z",
-          status: "reviewing",
-        },
-        {
-          id: "2",
-          reportTitle: "Workplace Harassment Incident",
-          reportType: "harassment",
-          timestamp: "2023-06-02T14:45:00Z",
-          status: "pending",
-        },
+
       ])
       setLoading(false)
     }, 1000)
@@ -66,7 +53,7 @@ export default function UserDashboard() {
             <span className="text-xl font-bold">ClearWhistle</span>
           </div>
           <nav className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">Welcome, {user.name}</span>
+            <span className="text-sm text-gray-500">Welcome {user.name}</span>
             <Button asChild variant="outline" size="sm">
               <Link href="/home">Logout</Link>
             </Button>
@@ -86,34 +73,11 @@ export default function UserDashboard() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-2xl">{reports.length}</CardTitle>
-              <CardDescription>Total Reports</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-2xl text-blue-600">
-                {reports.filter((r) => r.status === "reviewing").length}
-              </CardTitle>
-              <CardDescription>Under Review</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-2xl text-green-600">
-                {reports.filter((r) => r.status === "resolved").length}
-              </CardTitle>
-              <CardDescription>Resolved</CardDescription>
-            </CardHeader>
-          </Card>
+
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Your Reports</CardTitle>
-            <CardDescription>Track the status of reports you've submitted</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -162,12 +126,11 @@ export default function UserDashboard() {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Reports Yet</h3>
+                <h3 className="text-lg font-medium mb-2">Blow the Whistle anonymously</h3>
                 <p className="text-gray-500 mb-6 max-w-md">
-                  You haven't submitted any whistleblower reports yet. Your reports will appear here once submitted.
                 </p>
                 <Button asChild>
-                  <Link href="/submit">Submit Your First Report</Link>
+                  <Link href="/submit">Submit Your Report</Link>
                 </Button>
               </div>
             )}

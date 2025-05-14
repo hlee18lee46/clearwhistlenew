@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import bcrypt
 from datetime import datetime
+import requests
 
 load_dotenv()
 
@@ -85,25 +86,7 @@ def login():
         "is_admin": user['is_admin']
     })
 
-@app.route('/submit', methods=['POST'])
-def submit_report():
-    data = request.json
-    submitted_by = data.get('submitted_by')
-    org_id = data.get('organization_id')
 
-    # Verify user belongs to org
-    if submitted_by:
-        user = db.users.find_one({"_id": ObjectId(submitted_by)})
-        if not user or str(user['organization_id']) != org_id:
-            return jsonify({"error": "User not in organization"}), 403
-
-    report = {
-        "content": data['content'],
-        "submitted_by": ObjectId(submitted_by) if submitted_by else None,
-        "organization_id": ObjectId(org_id)
-    }
-    result = db.reports.insert_one(report)
-    return jsonify({"report_id": str(result.inserted_id)})
 
 @app.route('/admin/org-users/<org_id>', methods=['GET'])
 def list_users(org_id):
@@ -151,6 +134,125 @@ def list_pending_admins():
         for app in pending
     ])
 
+
+PINATA_API_KEY = os.getenv("PINATA_API_KEY")
+PINATA_SECRET_API_KEY = os.getenv("PINATA_SECRET_API_KEY")
+
+def upload_to_pinata(content: dict):
+    headers = {
+        "pinata_api_key": PINATA_API_KEY,
+        "pinata_secret_api_key": PINATA_SECRET_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "pinataContent": content
+    }
+
+    res = requests.post("https://api.pinata.cloud/pinning/pinJSONToIPFS", json=payload, headers=headers)
+    if res.status_code != 200:
+        raise Exception("Pinata upload failed: " + res.text)
+
+    return res.json()["IpfsHash"]
+
+from datetime import datetime
+from flask import request, jsonify
+from bson import ObjectId
+
+@app.route('/submit', methods=['POST'])
+def submit_report():
+    data = request.json
+    text = data.get("report_text")
+
+    if not text:
+        return jsonify({"error": "Missing report text"}), 400
+
+    try:
+        ipfs_hash = upload_to_pinata({
+            "text": text,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+        report = {
+            "content": ipfs_hash,
+            "timestamp": datetime.utcnow()
+        }
+
+        db.reports.insert_one(report)
+
+        return jsonify({"message": "Report submitted", "ipfs_hash": ipfs_hash})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/store-hash', methods=['POST'])
+def store_hash():
+    data = request.json
+    ipfs_hash = data.get("ipfs_hash")
+
+    if not ipfs_hash:
+        return jsonify({"error": "Missing IPFS hash"}), 400
+
+    try:
+        db.reports.insert_one({
+            "content": ipfs_hash,
+            "timestamp": datetime.utcnow()
+        })
+        return jsonify({"message": "Hash stored in MongoDB"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/reports', methods=['GET'])
+def list_all_reports():
+    reports = db.reports.find().sort("timestamp", -1)
+    return jsonify([
+        {
+            "_id": str(r["_id"]),
+            "content": r["content"],  # IPFS hash
+            "timestamp": r["timestamp"]
+        }
+        for r in reports
+    ])
+@app.route('/report/<report_id>', methods=['GET'])
+def get_report_by_id(report_id):
+    try:
+        report = db.reports.find_one({"_id": ObjectId(report_id)})
+        if not report:
+            return jsonify({"error": "Report not found"}), 404
+        return jsonify({
+            "content": report["content"],
+            "timestamp": report["timestamp"]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/submit_org', methods=['POST'])
+def submit_report_with_org():
+    data = request.json
+    text = data.get("report_text")
+    org_name = data.get("organization_name")
+
+    if not text or not org_name:
+        return jsonify({"error": "Missing report or organization"}), 400
+
+    try:
+        ipfs_hash = upload_to_pinata({
+            "text": text,
+            "organization": org_name,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+        report = {
+            "content": ipfs_hash,
+            "organization_name": org_name,
+            "timestamp": datetime.utcnow()
+        }
+
+        db.reports.insert_one(report)
+
+        return jsonify({"message": "Report submitted with organization", "ipfs_hash": ipfs_hash})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ---------- Run App ----------
 if __name__ == '__main__':

@@ -39,7 +39,7 @@ export default function ReportDetail() {
         // Mock report data
         const mockReport: ReportDetails = {
           organizationType: "company",
-          organizationName: "Tech Innovations Inc.",
+          organizationName: "",
           reportType: "ethics",
           reportTitle: "Unethical Marketing Practices",
           reportDetails:
